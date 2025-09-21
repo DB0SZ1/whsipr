@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Link Not Found</title>
+    <title>Server Error</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Reset and Base Styles */
@@ -19,6 +19,7 @@
             --primary-purple: #8b5cf6;
             --primary-pink: #ec4899;
             --primary-orange: #f59e0b;
+            --error-red: #ef4444;
             --text-dark: #1f2937;
             --text-gray: #6b7280;
             --text-light: #374151;
@@ -40,6 +41,39 @@
             --text-2xl: clamp(24px, 5vw, 32px);
             --text-3xl: clamp(28px, 6vw, 40px);
             --text-4xl: clamp(32px, 7vw, 48px);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(-20px, -10px) rotate(0deg); }
+            33% { transform: translate(20px, -20px) rotate(120deg); }
+            66% { transform: translate(-10px, 20px) rotate(240deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+            20%, 40%, 60%, 80% { transform: translateX(3px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
         }
 
         body {
@@ -67,7 +101,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #000 0%, #1a1a2e 50%, #16213e 100%);
+            background: linear-gradient(45deg, #1a0000 0%, #2e1a1a 50%, #3e1616 100%);
             z-index: 1;
             overflow: hidden;
         }
@@ -77,16 +111,10 @@
             position: absolute;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 40% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+            background: radial-gradient(circle at 20% 50%, rgba(239, 68, 68, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
             animation: float 20s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(-20px, -10px) rotate(0deg); }
-            33% { transform: translate(20px, -20px) rotate(120deg); }
-            66% { transform: translate(-10px, 20px) rotate(240deg); }
         }
 
         .error-container {
@@ -106,22 +134,24 @@
             backdrop-filter: blur(25px);
             padding: var(--card-padding);
             border-radius: var(--border-radius-lg);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.1);
             max-width: min(500px, 100vw - 2rem);
             width: 100%;
             text-align: center;
+            animation: fadeIn 0.8s ease-out;
         }
 
         .error-icon {
             font-size: var(--text-4xl);
             margin-bottom: clamp(15px, 3vw, 20px);
+            animation: shake 2s ease-in-out infinite;
         }
 
         .error-title {
             font-size: var(--text-3xl);
             font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink), var(--primary-orange));
+            background: linear-gradient(135deg, var(--error-red), var(--primary-pink), var(--primary-orange));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -133,12 +163,26 @@
             font-size: var(--text-base);
             font-weight: 500;
             color: var(--text-gray);
-            margin-bottom: clamp(25px, 5vw, 35px);
+            margin-bottom: clamp(15px, 3vw, 20px);
             line-height: 1.4;
         }
 
+        .error-details {
+            font-size: var(--text-sm);
+            color: var(--text-light);
+            margin-bottom: clamp(25px, 5vw, 35px);
+            line-height: 1.4;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: clamp(10px, 2vw, 15px);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
         .action-button {
-            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
             color: white;
             padding: clamp(14px, 3.5vw, 18px) clamp(20px, 5vw, 30px);
             border: none;
@@ -147,20 +191,61 @@
             font-weight: 600;
             font-family: 'Poppins', sans-serif;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             display: inline-block;
             min-height: 44px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .action-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-button:hover::before {
+            left: 100%;
+        }
+
+        .action-button.primary {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .action-button.primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .action-button.secondary {
+            background: linear-gradient(135deg, var(--text-gray), var(--text-light));
+            box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+        }
+
+        .action-button.secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
         }
 
         .action-button:active {
-            transform: translateY(0);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 480px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-button {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -170,15 +255,23 @@
     <div class="container">
         <div class="error-container">
             <div class="error-card">
-                <div class="error-icon">🔍</div>
-                <h1 class="error-title">Oops...</h1>
+                <div class="error-icon">⚠️</div>
+                <h1 class="error-title">Server Error</h1>
                 <p class="error-message">
-                    There's a problem with the link you followed. It might be broken, expired, or never existed.
+                    Something went wrong on our end.
+                </p>
+                <p class="error-details">
+                    We're experiencing technical difficulties. Please try again in a few moments or create a new message link.
                 </p>
                 
-                <a href="./login.html" class="action-button">
-                    Create New Message Link
-                </a>
+                <div class="action-buttons">
+                    <button class="action-button secondary" onclick="window.location.reload()">
+                        🔄 Try Again
+                    </button>
+                    <a href="/login" class="action-button primary">
+                        🏠 Go Home
+                    </a>
+                </div>
             </div>
         </div>
     </div>
