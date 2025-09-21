@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse
-from webpush import WebPush
+from pywebpush import WebPush
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from werkzeug.middleware.proxy_fix import ProxyFix
