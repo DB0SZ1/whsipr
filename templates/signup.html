@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whispr Sign Up - Anonymous Messages</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* CSS Custom Properties */
+        :root {
+            --primary-purple: #8b5cf6;
+            --primary-pink: #ec4899;
+            --primary-orange: #f59e0b;
+            --text-dark: #1f2937;
+            --text-gray: #6b7280;
+            --text-light: #374151;
+            --border-light: #e5e7eb;
+            --border-medium: #d1d5db;
+            --bg-light: #f8fafc;
+            --white-transparent: rgba(255, 255, 255, 0.98);
+            --black-overlay: rgba(0, 0, 0, 0.8);
+            
+            --container-padding: clamp(16px, 4vw, 40px);
+            --card-padding: clamp(20px, 5vw, 50px);
+            --border-radius-sm: clamp(10px, 2vw, 15px);
+            --border-radius-lg: clamp(15px, 3vw, 25px);
+            
+            --text-xs: clamp(12px, 2vw, 14px);
+            --text-sm: clamp(14px, 2.5vw, 16px);
+            --text-base: clamp(16px, 3vw, 18px);
+            --text-lg: clamp(18px, 3.5vw, 22px);
+            --text-xl: clamp(20px, 4vw, 28px);
+            --text-2xl: clamp(24px, 5vw, 32px);
+            --text-3xl: clamp(28px, 6vw, 40px);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+            background: #000000;
+            min-height: 100vh;
+            min-height: 100svh;
+            line-height: 1.5;
+        }
+
+        .container {
+            position: relative;
+            min-height: 100vh;
+            min-height: 100svh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #000 0%, #1a1a2e 50%, #16213e 100%);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .animated-background::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(-20px, -10px) rotate(0deg); }
+            33% { transform: translate(20px, -20px) rotate(120deg); }
+            66% { transform: translate(-10px, 20px) rotate(240deg); }
+        }
+
+        .auth-container {
+            position: relative;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100svh;
+            padding: var(--container-padding);
+            width: 100%;
+        }
+
+        .auth-card {
+            background: var(--white-transparent);
+            backdrop-filter: blur(25px);
+            padding: var(--card-padding);
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: min(450px, 100vw - 2rem);
+            width: 100%;
+            text-align: center;
+        }
+
+        .main-title {
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink), var(--primary-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: clamp(10px, 2vw, 15px);
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: var(--text-base);
+            font-weight: 500;
+            color: var(--text-gray);
+            margin-bottom: clamp(30px, 6vw, 40px);
+            line-height: 1.4;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(18px, 4vw, 22px);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 2vw, 10px);
+            text-align: left;
+        }
+
+        label {
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: var(--text-sm);
+        }
+
+        input {
+            padding: clamp(14px, 3vw, 18px) clamp(16px, 4vw, 20px);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-base);
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            width: 100%;
+            min-height: 50px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            background: white;
+            transform: translateY(-1px);
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+            padding: clamp(16px, 4vw, 20px) clamp(24px, 6vw, 30px);
+            border: none;
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-base);
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            margin-top: clamp(10px, 2vw, 15px);
+            min-height: 50px;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .submit-button:active {
+            transform: translateY(0);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: clamp(15px, 3vw, 18px);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: clamp(20px, 4vw, 25px);
+            font-weight: 500;
+            font-size: var(--text-sm);
+        }
+
+        .alert.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .auth-links {
+            margin-top: clamp(25px, 5vw, 30px);
+            text-align: center;
+        }
+
+        .auth-link {
+            color: var(--primary-purple);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: var(--text-sm);
+            transition: all 0.3s ease;
+        }
+
+        .auth-link:hover {
+            text-decoration: underline;
+            transform: translateY(-1px);
+        }
+
+        .password-requirements {
+            background: var(--bg-light);
+            padding: clamp(12px, 3vw, 15px);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-light);
+            text-align: left;
+            margin-top: clamp(8px, 2vw, 10px);
+        }
+
+        .password-requirements h4 {
+            color: var(--text-dark);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            margin-bottom: clamp(6px, 1.5vw, 8px);
+        }
+
+        .password-requirements ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .password-requirements li {
+            color: var(--text-gray);
+            font-size: var(--text-xs);
+            display: flex;
+            align-items: center;
+            gap: clamp(6px, 1.5vw, 8px);
+            margin-bottom: clamp(4px, 1vw, 6px);
+        }
+
+        .password-requirements li::before {
+            content: '•';
+            color: var(--primary-purple);
+            font-weight: bold;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .auth-card {
+                padding: clamp(25px, 6vw, 35px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-background"></div>
+    
+    <div class="container">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h1 class="main-title">🚀 Join Anonymous Messages</h1>
+                <p class="subtitle">Create your account to receive and manage anonymous messages</p>
+                
+                <div id="errorAlert" class="alert error" style="display: none;"></div>
+                
+                <div class="auth-form" id="signupForm">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            placeholder="Enter your full name"
+                            maxlength="50"
+                            required
+                            autocomplete="name"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            placeholder="Enter your email"
+                            required
+                            autocomplete="email"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            placeholder="Create a strong password"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <div class="password-requirements">
+                            <h4>Password Requirements:</h4>
+                            <ul>
+                                <li>At least 6 characters long</li>
+                                <li>Mix of letters and numbers recommended</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="submit-button" id="signupBtn">
+                        Create My Account
+                    </button>
+                </div>
+                
+                <div class="auth-links">
+                    <a href="/login" class="auth-link">Already have an account? Sign in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const signupForm = document.getElementById('signupForm');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const signupBtn = document.getElementById('signupBtn');
+        const errorAlert = document.getElementById('errorAlert');
+
+        signupForm.addEventListener('submit', handleSignup);
+
+        // Handle enter key in form
+        [nameInput, emailInput, passwordInput].forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSignup(e);
+                }
+            });
+        });
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            
+            if (!name || !email || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters long');
+                return;
+            }
+            
+            // Show loading state
+            signupBtn.disabled = true;
+            signupBtn.textContent = 'Creating Account...';
+            hideError();
+            
+            try {
+                const response = await fetch('/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Redirect to dashboard
+                    window.location.href = result.redirect;
+                } else {
+                    showError(result.error);
+                }
+            } catch (error) {
+                showError('Something went wrong. Please try again.');
+            } finally {
+                // Reset button
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Create My Account';
+            }
+        }
+
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.style.display = 'block';
+        }
+
+        function hideError() {
+            errorAlert.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

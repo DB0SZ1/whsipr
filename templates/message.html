@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Message to {{ user.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* CSS Custom Properties */
+        :root {
+            --primary-purple: #8b5cf6;
+            --primary-pink: #ec4899;
+            --primary-orange: #f59e0b;
+            --text-dark: #1f2937;
+            --text-gray: #6b7280;
+            --text-light: #374151;
+            --border-light: #e5e7eb;
+            --border-medium: #d1d5db;
+            --bg-light: #f8fafc;
+            --white-transparent: rgba(255, 255, 255, 0.98);
+            --black-overlay: rgba(0, 0, 0, 0.8);
+            
+            --header-height: clamp(60px, 8vh, 80px);
+            --container-padding: clamp(16px, 4vw, 40px);
+            --card-padding: clamp(20px, 5vw, 50px);
+            --border-radius-sm: clamp(10px, 2vw, 15px);
+            --border-radius-lg: clamp(15px, 3vw, 25px);
+            
+            --text-xs: clamp(12px, 2vw, 14px);
+            --text-sm: clamp(14px, 2.5vw, 16px);
+            --text-base: clamp(16px, 3vw, 18px);
+            --text-lg: clamp(18px, 3.5vw, 22px);
+            --text-xl: clamp(20px, 4vw, 28px);
+            --text-2xl: clamp(24px, 5vw, 32px);
+            --text-3xl: clamp(28px, 6vw, 40px);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+            background: #000000;
+            min-height: 100vh;
+            min-height: 100svh;
+            line-height: 1.5;
+        }
+
+        .container {
+            position: relative;
+            min-height: 100vh;
+            min-height: 100svh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #000 0%, #1a1a2e 50%, #16213e 100%);
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .animated-background::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(-20px, -10px) rotate(0deg); }
+            33% { transform: translate(20px, -20px) rotate(120deg); }
+            66% { transform: translate(-10px, 20px) rotate(240deg); }
+        }
+
+        .waitlist-container {
+            position: relative;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100svh;
+            padding: var(--container-padding);
+            width: 100%;
+        }
+
+        .waitlist-card {
+            background: var(--white-transparent);
+            backdrop-filter: blur(25px);
+            padding: var(--card-padding);
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: min(500px, 100vw - 2rem);
+            width: 100%;
+            text-align: center;
+        }
+
+        .main-title {
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink), var(--primary-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: clamp(10px, 2vw, 15px);
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: var(--text-base);
+            font-weight: 500;
+            color: var(--text-gray);
+            margin-bottom: clamp(25px, 5vw, 35px);
+            line-height: 1.4;
+        }
+
+        .recipient-info {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+            padding: clamp(15px, 3vw, 20px);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-bottom: clamp(25px, 5vw, 30px);
+        }
+
+        .recipient-info h3 {
+            color: var(--primary-purple);
+            font-weight: 600;
+            font-size: var(--text-lg);
+            margin-bottom: clamp(5px, 1vw, 8px);
+        }
+
+        .recipient-info p {
+            color: var(--text-gray);
+            font-size: var(--text-sm);
+        }
+
+        .message-form {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(15px, 3vw, 20px);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(6px, 1.5vw, 8px);
+            text-align: left;
+        }
+
+        label {
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: var(--text-xs);
+        }
+
+        textarea {
+            padding: clamp(12px, 3vw, 16px) clamp(14px, 3.5vw, 18px);
+            border: 2px solid var(--border-light);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-sm);
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            background: white;
+            transform: translateY(-1px);
+        }
+
+        .char-count {
+            text-align: right;
+            color: var(--text-gray);
+            font-size: var(--text-xs);
+            margin-top: clamp(5px, 1vw, 8px);
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+            padding: clamp(14px, 3.5vw, 18px) clamp(20px, 5vw, 30px);
+            border: none;
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            margin-top: clamp(8px, 2vw, 10px);
+            min-height: 44px;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .submit-button:active {
+            transform: translateY(0);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: clamp(12px, 3vw, 15px);
+            border-radius: var(--border-radius-sm);
+            margin-top: clamp(15px, 3vw, 20px);
+            font-weight: 500;
+            font-size: var(--text-sm);
+        }
+
+        .alert.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .privacy-note {
+            margin-top: clamp(25px, 5vw, 30px);
+            padding: clamp(15px, 3vw, 20px);
+            background: var(--bg-light);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-xs);
+            color: var(--text-gray);
+            border: 1px solid var(--border-light);
+        }
+
+        .back-link {
+            position: absolute;
+            top: clamp(15px, 3vw, 20px);
+            left: clamp(15px, 3vw, 20px);
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: var(--text-sm);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .back-link {
+                position: static;
+                display: inline-block;
+                margin-bottom: clamp(15px, 3vw, 20px);
+            }
+            
+            .waitlist-container {
+                padding-top: clamp(40px, 8vw, 60px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-background"></div>
+    <a href="/" class="back-link">← Create New Link</a>
+    
+    <div class="container">
+        <div class="waitlist-container">
+            <div class="waitlist-card">
+                <h1 class="main-title">📝 Send Anonymous Message</h1>
+                <p class="subtitle">Your message will be sent completely anonymously</p>
+                
+                <div class="recipient-info">
+                    <h3>{{ user.name }}</h3>
+                    <p>Send them an anonymous message below</p>
+                </div>
+                
+                <form class="message-form" id="messageForm">
+                    <div class="form-group">
+                        <label for="message">Your Anonymous Message</label>
+                        <textarea 
+                            id="messageText" 
+                            placeholder="Write your message here... Share thoughts, feedback, compliments, or just say hello!"
+                            maxlength="1000"
+                            required
+                        ></textarea>
+                        <div class="char-count">
+                            <span id="charCount">0</span>/1000
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="submit-button" id="sendBtn">
+                        Send Anonymous Message
+                    </button>
+                </form>
+                
+                <div id="messageAlert" class="alert" style="display: none;"></div>
+                
+                <div class="privacy-note">
+                    <strong>🔒 Complete Privacy</strong><br>
+                    Your message is completely anonymous. No IP addresses, browser data, or personal information is collected or stored.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messageForm = document.getElementById('messageForm');
+        const messageText = document.getElementById('messageText');
+        const sendBtn = document.getElementById('sendBtn');
+        const charCount = document.getElementById('charCount');
+        const messageAlert = document.getElementById('messageAlert');
+        const userId = '{{ user.user_id }}';
+
+        // Update character count
+        messageText.addEventListener('input', function() {
+            const count = this.value.length;
+            charCount.textContent = count;
+            
+            if (count > 900) {
+                charCount.style.color = '#dc2626';
+            } else if (count > 700) {
+                charCount.style.color = '#f59e0b';
+            } else {
+                charCount.style.color = '#6b7280';
+            }
+        });
+
+        // Handle form submission
+        messageForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const message = messageText.value.trim();
+            if (!message) {
+                showMessage('Please write a message first!', 'error');
+                return;
+            }
+            
+            // Disable button and show loading state
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            try {
+                const response = await fetch(`/send/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    messageText.value = '';
+                    charCount.textContent = '0';
+                    charCount.style.color = '#6b7280';
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Something went wrong. Please try again.', 'error');
+            } finally {
+                // Re-enable button
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Anonymous Message';
+            }
+        });
+
+        function showMessage(text, type) {
+            messageAlert.textContent = text;
+            messageAlert.className = `alert ${type}`;
+            messageAlert.style.display = 'block';
+            
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                messageAlert.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "user_id": "e1e43b40",
+    "message": "heyyy",
+    "timestamp": "2025-09-21T01:27:25.478065",
+    "read": true
+  },
+  {
+    "id": 2,
+    "user_id": "dc215b7e",
+    "message": "hey",
+    "timestamp": "2025-09-21T01:47:30.522182",
+    "read": true
+  },
+  {
+    "id": 3,
+    "user_id": "dc215b7e",
+    "message": "i love you",
+    "timestamp": "2025-09-21T01:48:36.863409",
+    "read": true
+  },
+  {
+    "id": 4,
+    "user_id": "dc215b7e",
+    "message": "heyyyyyooooo",
+    "timestamp": "2025-09-21T02:07:43.995928",
+    "read": true
+  },
+  {
+    "id": 5,
+    "user_id": "dc215b7e",
+    "message": "rarrrrr",
+    "timestamp": "2025-09-21T02:12:29.961214",
+    "read": false
+  },
+  {
+    "id": 6,
+    "user_id": "dc215b7e",
+    "message": "24 + 4 is what",
+    "timestamp": "2025-09-21T02:12:41.137413",
+    "read": false
+  }
+]
