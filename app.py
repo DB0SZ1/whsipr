@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse
+from webpush import WebPush
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -26,6 +27,7 @@ class Config:
     MESSAGES_FILE = os.path.join(DATA_DIR, 'messages.json')
     USERS_FILE = os.path.join(DATA_DIR, 'users.json')
     ACCOUNTS_FILE = os.path.join(DATA_DIR, 'accounts.json')
+    SUBSCRIPTIONS_FILE = os.path.join(DATA_DIR, 'subscriptions.json')
     
     # App settings
     MAX_MESSAGE_LENGTH = int(os.environ.get('MAX_MESSAGE_LENGTH', '1000'))
@@ -39,6 +41,11 @@ class Config:
     # Keep-alive settings
     ENABLE_KEEP_ALIVE = os.environ.get('ENABLE_KEEP_ALIVE', 'true').lower() == 'true'
     KEEP_ALIVE_INTERVAL = int(os.environ.get('KEEP_ALIVE_INTERVAL', '840'))  # 14 minutes
+    
+    # Push notification settings
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY')
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
+    VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@whispr.com')
 
 app.config.from_object(Config)
 
@@ -72,7 +79,6 @@ class AppKeepAlive:
         
     def get_app_url(self):
         """Determine the app URL from environment variables"""
-        # Check common hosting platform environment variables
         app_url = (
             os.environ.get('RENDER_EXTERNAL_URL') or      # Render
             os.environ.get('RAILWAY_STATIC_URL') or       # Railway  
@@ -121,7 +127,6 @@ class AppKeepAlive:
     
     def _ping_loop(self):
         """Internal ping loop"""
-        # Wait a bit before starting to ping (let app fully start)
         time.sleep(120)  # Wait 2 minutes before first ping
         
         while self.running:
@@ -152,10 +157,9 @@ class AppKeepAlive:
                 self.failed_pings += 1
                 logger.error(f"Keep-alive unexpected error: {e}")
             
-            # If too many failed pings, try to restart
             if self.failed_pings > 5:
                 logger.error("Too many failed pings, attempting to restart keep-alive...")
-                time.sleep(300)  # Wait 5 minutes before retrying
+                time.sleep(300)
                 self.failed_pings = 0
             else:
                 time.sleep(self.ping_interval)
@@ -182,7 +186,6 @@ def get_base_url():
         protocol = 'https' if app.config['FORCE_HTTPS'] else 'http'
         return f"{protocol}://{app.config['CUSTOM_DOMAIN']}"
     else:
-        # Fallback to request host
         return request.host_url.rstrip('/')
 
 def load_json_file(filepath):
@@ -198,7 +201,6 @@ def load_json_file(filepath):
 def save_json_file(filepath, data):
     """Generic function to save JSON files with error handling"""
     try:
-        # Create backup
         if os.path.exists(filepath):
             backup_path = f"{filepath}.backup"
             os.rename(filepath, backup_path)
@@ -206,14 +208,12 @@ def save_json_file(filepath, data):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         
-        # Remove backup on success
         backup_path = f"{filepath}.backup"
         if os.path.exists(backup_path):
             os.remove(backup_path)
             
     except IOError as e:
         logger.error(f"Error saving {filepath}: {e}")
-        # Restore backup if save failed
         backup_path = f"{filepath}.backup"
         if os.path.exists(backup_path):
             os.rename(backup_path, filepath)
@@ -242,6 +242,14 @@ def load_accounts():
 def save_accounts(accounts):
     """Save accounts to JSON file"""
     save_json_file(app.config['ACCOUNTS_FILE'], accounts)
+
+def load_subscriptions():
+    """Load push subscriptions from JSON file"""
+    return load_json_file(app.config['SUBSCRIPTIONS_FILE'])
+
+def save_subscriptions(subscriptions):
+    """Save push subscriptions to JSON file"""
+    save_json_file(app.config['SUBSCRIPTIONS_FILE'], subscriptions)
 
 def hash_password(password):
     """Hash password with salt using PBKDF2"""
@@ -333,7 +341,6 @@ def health_check():
         'uptime': time.time() - keep_alive.start_time,
     }
     
-    # Add detailed info for non-keep-alive requests
     if not is_keep_alive_request:
         status.update({
             'keep_alive': keep_alive.get_status(),
@@ -364,6 +371,71 @@ def keep_alive_status():
     """Detailed keep-alive status endpoint"""
     return jsonify(keep_alive.get_status())
 
+# Push Notification Routes
+@app.route('/vapid_public_key')
+def vapid_public_key():
+    """Return VAPID public key for push notifications"""
+    return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
+
+@app.route('/subscribe/<user_id>', methods=['POST'])
+@login_required
+def subscribe(user_id):
+    """Handle push notification subscription"""
+    try:
+        if session.get('user_id') != user_id:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'Invalid request data'}), 400
+        
+        subscription_info = data.get('subscription')
+        if not subscription_info:
+            return jsonify({'success': False, 'error': 'Subscription data required'}), 400
+        
+        subscriptions = load_subscriptions()
+        existing_subscription = next((sub for sub in subscriptions if sub['user_id'] == user_id and sub['endpoint'] == subscription_info['endpoint']), None)
+        
+        if not existing_subscription:
+            subscriptions.append({
+                'user_id': user_id,
+                'endpoint': subscription_info['endpoint'],
+                'keys': subscription_info['keys'],
+                'created_at': datetime.now().isoformat()
+            })
+            save_subscriptions(subscriptions)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Subscription error: {e}")
+        return jsonify({'success': False, 'error': 'An error occurred during subscription'}), 500
+
+def send_push_notification(user_id, message, title="New Whispr Message"):
+    """Send push notification to user"""
+    try:
+        subscriptions = load_subscriptions()
+        user_subscriptions = [sub for sub in subscriptions if sub['user_id'] == user_id]
+        
+        for subscription in user_subscriptions:
+            try:
+                WebPush(
+                    subscription_info={
+                        'endpoint': subscription['endpoint'],
+                        'keys': subscription['keys']
+                    },
+                    data=json.dumps({
+                        'title': title,
+                        'body': message[:100],  # Truncate for notification
+                        'url': f"{get_base_url()}/admin/{user_id}"
+                    }),
+                    vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
+                    vapid_claims={'sub': app.config['VAPID_SUBJECT']}
+                ).send()
+            except Exception as e:
+                logger.warning(f"Failed to send push notification to {subscription['endpoint']}: {e}")
+    except Exception as e:
+        logger.error(f"Push notification error: {e}")
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -389,7 +461,6 @@ def login():
             if not account or not verify_password(account['password'], password):
                 return jsonify({'success': False, 'error': 'Invalid email or password'})
             
-            # Set session
             session.permanent = True
             session['user_id'] = account['user_id']
             session['email'] = account['email']
@@ -416,7 +487,6 @@ def signup():
             email = sanitize_input(data.get('email', '')).lower()
             password = data.get('password', '')
             
-            # Validation
             if not name or not email or not password:
                 return jsonify({'success': False, 'error': 'All fields are required'})
             
@@ -429,18 +499,15 @@ def signup():
             if len(name) > app.config['MAX_NAME_LENGTH']:
                 return jsonify({'success': False, 'error': f'Name too long (max {app.config["MAX_NAME_LENGTH"]} characters)'})
             
-            # Check if email already exists
             accounts = load_accounts()
             if any(acc['email'] == email for acc in accounts):
                 return jsonify({'success': False, 'error': 'Email already registered'})
             
-            # Generate unique user ID
             user_id = generate_user_id()
             existing_ids = [acc['user_id'] for acc in accounts]
             while user_id in existing_ids:
                 user_id = generate_user_id()
             
-            # Create account
             new_account = {
                 'user_id': user_id,
                 'name': name,
@@ -452,7 +519,6 @@ def signup():
             accounts.append(new_account)
             save_accounts(accounts)
             
-            # Create user profile
             users = load_users()
             new_user = {
                 'user_id': user_id,
@@ -463,7 +529,6 @@ def signup():
             users.append(new_user)
             save_users(users)
             
-            # Set session
             session.permanent = True
             session['user_id'] = user_id
             session['email'] = email
@@ -519,16 +584,13 @@ def create_user():
         if len(name) > app.config['MAX_NAME_LENGTH']:
             return jsonify({'success': False, 'error': f'Name too long (max {app.config["MAX_NAME_LENGTH"]} characters)'})
         
-        # Generate unique user ID
         user_id = generate_user_id()
         users = load_users()
         
-        # Ensure user_id is unique
         existing_ids = [user['user_id'] for user in users]
         while user_id in existing_ids:
             user_id = generate_user_id()
         
-        # Create new user
         new_user = {
             'user_id': user_id,
             'name': name,
@@ -556,7 +618,7 @@ def create_user():
         return jsonify({'success': False, 'error': 'An error occurred while creating user'})
 
 @app.route('/anonymous/<name>/<user_id>')
-@app.route('/m/<user_id>')  # Keep old route for backward compatibility
+@app.route('/m/<user_id>')
 def message_form(user_id, name=None):
     """Message form for a specific user"""
     try:
@@ -566,7 +628,6 @@ def message_form(user_id, name=None):
         if not user:
             return render_template('404.html'), 404
         
-        # If accessed via old route, redirect to new pretty URL
         if name is None:
             formatted_name = user['name'].replace(' ', '-').lower()
             return redirect(url_for('message_form', name=formatted_name, user_id=user_id), code=301)
@@ -599,33 +660,32 @@ def send_message(user_id):
         if len(message) > app.config['MAX_MESSAGE_LENGTH']:
             return jsonify({'success': False, 'error': f'Message too long (max {app.config["MAX_MESSAGE_LENGTH"]} characters)'})
         
-        # Load existing messages
         messages = load_messages()
         
-        # Generate message ID
         message_id = max([msg.get('id', 0) for msg in messages], default=0) + 1
         
-        # Add new message
         new_message = {
             'id': message_id,
             'user_id': user_id,
             'message': message,
             'timestamp': datetime.now().isoformat(),
             'read': False,
-            'ip_hash': hashlib.sha256(request.remote_addr.encode()).hexdigest()[:8]  # For basic spam prevention
+            'ip_hash': hashlib.sha256(request.remote_addr.encode()).hexdigest()[:8]
         }
         
         messages.append(new_message)
         save_messages(messages)
         
-        # Update user message count
         for u in users:
             if u['user_id'] == user_id:
                 u['message_count'] = u.get('message_count', 0) + 1
                 break
         save_users(users)
         
-        return jsonify({'success': True, 'message': f'Your anonymous message has been sent to {user["name"]}!'})
+        # Send push notification
+        send_push_notification(user_id, message, f"New message for {user['name']}")
+        
+        return jsonify({'success': True, 'message': f'Your anonymous message has been sent to {user["name"]}'})
         
     except Exception as e:
         logger.error(f"Send message error: {e}")
@@ -636,7 +696,6 @@ def send_message(user_id):
 def admin(user_id):
     """Admin page to view messages for a specific user"""
     try:
-        # Check if user is accessing their own admin page
         if session.get('user_id') != user_id:
             return render_template('403.html'), 403
         
@@ -648,10 +707,8 @@ def admin(user_id):
         
         messages = load_messages()
         user_messages = [msg for msg in messages if msg['user_id'] == user_id]
-        # Sort by newest first
         user_messages.sort(key=lambda x: x['timestamp'], reverse=True)
         
-        # Generate the pretty message URL
         base_url = get_base_url()
         formatted_name = user['name'].replace(' ', '-').lower()
         pretty_message_url = f"{base_url}/anonymous/{formatted_name}/{user_id}"
@@ -659,7 +716,8 @@ def admin(user_id):
         return render_template('admin.html', 
                              messages=user_messages, 
                              user=user, 
-                             message_url=pretty_message_url)
+                             message_url=pretty_message_url,
+                             vapid_public_key=app.config['VAPID_PUBLIC_KEY'])
         
     except Exception as e:
         logger.error(f"Admin page error: {e}")
@@ -670,7 +728,6 @@ def admin(user_id):
 def mark_read(user_id, message_id):
     """Mark a message as read"""
     try:
-        # Check if user is accessing their own messages
         if session.get('user_id') != user_id:
             return render_template('403.html'), 403
         
@@ -692,7 +749,6 @@ def mark_read(user_id, message_id):
 def delete_message(user_id, message_id):
     """Delete a message"""
     try:
-        # Check if user is accessing their own messages
         if session.get('user_id') != user_id:
             return render_template('403.html'), 403
         
@@ -703,7 +759,6 @@ def delete_message(user_id, message_id):
         if len(messages) < original_count:
             save_messages(messages)
             
-            # Update user message count
             users = load_users()
             for user in users:
                 if user['user_id'] == user_id:
@@ -721,23 +776,19 @@ def delete_message(user_id, message_id):
 def initialize_keep_alive():
     """Initialize keep-alive after app startup"""
     if app.config['ENABLE_KEEP_ALIVE'] and not app.debug:
-        # Try to start keep-alive immediately if URL is available
         keep_alive.start()
 
 if __name__ == '__main__':
-    # Development mode
     port = int(os.environ.get('PORT', 5001))
     host = os.environ.get('HOST', '127.0.0.1')
     debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     
-    # Create templates directory if it doesn't exist
     if not os.path.exists('templates'):
         os.makedirs('templates')
     
-    # Initialize keep-alive after a short delay in production
     if not debug:
         def delayed_start():
-            time.sleep(10)  # Wait for app to be fully ready
+            time.sleep(10)
             initialize_keep_alive()
         
         threading.Thread(target=delayed_start, daemon=True).start()
