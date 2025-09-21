@@ -19,6 +19,8 @@
             --primary-purple: #8b5cf6;
             --primary-pink: #ec4899;
             --primary-orange: #f59e0b;
+            --success-green: #10b981;
+            --error-red: #ef4444;
             --text-dark: #1f2937;
             --text-gray: #6b7280;
             --text-light: #374151;
@@ -143,12 +145,19 @@
             flex-direction: column;
             gap: clamp(8px, 2vw, 10px);
             text-align: left;
+            position: relative;
         }
 
         label {
             color: var(--text-light);
             font-weight: 600;
             font-size: var(--text-sm);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
         input {
@@ -163,12 +172,55 @@
             min-height: 50px;
         }
 
+        input.has-toggle {
+            padding-right: clamp(45px, 10vw, 55px);
+        }
+
         input:focus {
             outline: none;
             border-color: var(--primary-purple);
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
             background: white;
             transform: translateY(-1px);
+        }
+
+        input.error {
+            border-color: var(--error-red);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        input.success {
+            border-color: var(--success-green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: clamp(12px, 3vw, 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: var(--text-gray);
+            font-size: clamp(16px, 4vw, 20px);
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-purple);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .field-error {
+            color: var(--error-red);
+            font-size: var(--text-xs);
+            margin-top: clamp(4px, 1vw, 6px);
+            display: flex;
+            align-items: center;
+            gap: clamp(4px, 1vw, 6px);
         }
 
         .submit-button {
@@ -187,7 +239,7 @@
             min-height: 50px;
         }
 
-        .submit-button:hover {
+        .submit-button:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
         }
@@ -208,6 +260,9 @@
             margin-bottom: clamp(20px, 4vw, 25px);
             font-weight: 500;
             font-size: var(--text-sm);
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 10px);
         }
 
         .alert.error {
@@ -297,35 +352,48 @@
                 <h1 class="main-title">📬 Welcome Back</h1>
                 <p class="subtitle">Sign in to access your anonymous messages dashboard</p>
                 
-                <div id="errorAlert" class="alert error" style="display: none;"></div>
+                <div id="errorAlert" class="alert error" style="display: none;">
+                    <span>⚠️</span>
+                    <span id="errorMessage"></span>
+                </div>
                 
-                <div class="auth-form" id="loginForm">
+                <form class="auth-form" id="loginForm" novalidate>
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            placeholder="Enter your email"
-                            required
-                            autocomplete="email"
-                        >
+                        <div class="input-wrapper">
+                            <input 
+                                type="email" 
+                                id="email" 
+                                placeholder="Enter your email"
+                                required
+                                autocomplete="email"
+                            >
+                        </div>
+                        <div id="emailError" class="field-error" style="display: none;"></div>
                     </div>
                     
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            placeholder="Enter your password"
-                            required
-                            autocomplete="current-password"
-                        >
+                        <div class="input-wrapper">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                class="has-toggle"
+                                placeholder="Enter your password"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+                                👁️
+                            </button>
+                        </div>
+                        <div id="passwordError" class="field-error" style="display: none;"></div>
                     </div>
                     
                     <button type="submit" class="submit-button" id="loginBtn">
                         Sign In
                     </button>
-                </div>
+                </form>
                 
                 <div class="auth-links">
                     <a href="/signup" class="auth-link">Don't have an account? Sign up</a>
@@ -341,12 +409,81 @@
     </div>
 
     <script>
+        // DOM Elements
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
         const loginBtn = document.getElementById('loginBtn');
         const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
 
+        // Password visibility toggle
+        let isPasswordVisible = false;
+        
+        passwordToggle.addEventListener('click', function() {
+            isPasswordVisible = !isPasswordVisible;
+            
+            if (isPasswordVisible) {
+                passwordInput.type = 'text';
+                passwordToggle.textContent = '🙈';
+                passwordToggle.setAttribute('aria-label', 'Hide password');
+            } else {
+                passwordInput.type = 'password';
+                passwordToggle.textContent = '👁️';
+                passwordToggle.setAttribute('aria-label', 'Show password');
+            }
+        });
+
+        // Email validation
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // Real-time validation
+        emailInput.addEventListener('blur', function() {
+            const email = this.value.trim();
+            
+            if (!email) {
+                showFieldError('email', 'Email is required');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showFieldError('email', 'Please enter a valid email address');
+                return;
+            }
+            
+            clearFieldError('email');
+        });
+
+        emailInput.addEventListener('input', function() {
+            if (this.classList.contains('error')) {
+                clearFieldError('email');
+            }
+        });
+
+        passwordInput.addEventListener('blur', function() {
+            const password = this.value;
+            
+            if (!password) {
+                showFieldError('password', 'Password is required');
+                return;
+            }
+            
+            clearFieldError('password');
+        });
+
+        passwordInput.addEventListener('input', function() {
+            if (this.classList.contains('error')) {
+                clearFieldError('password');
+            }
+        });
+
+        // Form submission
         loginForm.addEventListener('submit', handleLogin);
 
         // Handle enter key in form
@@ -365,15 +502,32 @@
             const email = emailInput.value.trim();
             const password = passwordInput.value;
             
-            if (!email || !password) {
-                showError('Please fill in all fields');
+            // Clear previous errors
+            hideError();
+            clearAllFieldErrors();
+            
+            // Validate form
+            let hasErrors = false;
+            
+            if (!email) {
+                showFieldError('email', 'Email is required');
+                hasErrors = true;
+            } else if (!validateEmail(email)) {
+                showFieldError('email', 'Please enter a valid email address');
+                hasErrors = true;
+            }
+            
+            if (!password) {
+                showFieldError('password', 'Password is required');
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
                 return;
             }
             
             // Show loading state
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Signing In...';
-            hideError();
+            setLoadingState(true);
             
             try {
                 const response = await fetch('/login', {
@@ -387,23 +541,70 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Redirect to dashboard
-                    window.location.href = result.redirect;
+                    // Show success state briefly
+                    loginBtn.textContent = 'Success! Redirecting...';
+                    loginBtn.style.background = 'linear-gradient(135deg, var(--success-green), #059669)';
+                    
+                    // Redirect after brief delay
+                    setTimeout(() => {
+                        window.location.href = result.redirect || '/dashboard';
+                    }, 1000);
                 } else {
-                    showError(result.error);
+                    showError(result.error || 'Invalid email or password');
                 }
             } catch (error) {
-                showError('Something went wrong. Please try again.');
+                console.error('Login error:', error);
+                showError('Something went wrong. Please check your connection and try again.');
             } finally {
-                // Reset button
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Sign In';
+                // Reset button state after delay if still on page
+                setTimeout(() => {
+                    setLoadingState(false);
+                }, 2000);
             }
         }
 
+        function setLoadingState(loading) {
+            loginBtn.disabled = loading;
+            if (loading) {
+                loginBtn.textContent = 'Signing In...';
+            } else {
+                loginBtn.textContent = 'Sign In';
+                loginBtn.style.background = 'linear-gradient(135deg, var(--primary-purple), var(--primary-pink))';
+            }
+        }
+
+        function showFieldError(field, message) {
+            const input = field === 'email' ? emailInput : passwordInput;
+            const errorDiv = field === 'email' ? emailError : passwordError;
+            
+            input.classList.remove('success');
+            input.classList.add('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'flex';
+        }
+
+        function clearFieldError(field) {
+            const input = field === 'email' ? emailInput : passwordInput;
+            const errorDiv = field === 'email' ? emailError : passwordError;
+            
+            input.classList.remove('error');
+            input.classList.add('success');
+            errorDiv.style.display = 'none';
+        }
+
+        function clearAllFieldErrors() {
+            clearFieldError('email');
+            clearFieldError('password');
+            emailInput.classList.remove('success', 'error');
+            passwordInput.classList.remove('success', 'error');
+        }
+
         function showError(message) {
-            errorAlert.textContent = message;
-            errorAlert.style.display = 'block';
+            errorMessage.textContent = message;
+            errorAlert.style.display = 'flex';
+            
+            // Scroll to top to show error
+            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function hideError() {

@@ -19,6 +19,9 @@
             --primary-purple: #8b5cf6;
             --primary-pink: #ec4899;
             --primary-orange: #f59e0b;
+            --success-green: #10b981;
+            --error-red: #ef4444;
+            --warning-orange: #f59e0b;
             --text-dark: #1f2937;
             --text-gray: #6b7280;
             --text-light: #374151;
@@ -143,12 +146,19 @@
             flex-direction: column;
             gap: clamp(8px, 2vw, 10px);
             text-align: left;
+            position: relative;
         }
 
         label {
             color: var(--text-light);
             font-weight: 600;
             font-size: var(--text-sm);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
         input {
@@ -163,12 +173,60 @@
             min-height: 50px;
         }
 
+        input.has-toggle {
+            padding-right: clamp(45px, 10vw, 55px);
+        }
+
         input:focus {
             outline: none;
             border-color: var(--primary-purple);
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
             background: white;
             transform: translateY(-1px);
+        }
+
+        input.error {
+            border-color: var(--error-red);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        input.success {
+            border-color: var(--success-green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        input.warning {
+            border-color: var(--warning-orange);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: clamp(12px, 3vw, 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: var(--text-gray);
+            font-size: clamp(16px, 4vw, 20px);
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-purple);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .field-error {
+            color: var(--error-red);
+            font-size: var(--text-xs);
+            margin-top: clamp(4px, 1vw, 6px);
+            display: flex;
+            align-items: center;
+            gap: clamp(4px, 1vw, 6px);
         }
 
         .submit-button {
@@ -187,7 +245,7 @@
             min-height: 50px;
         }
 
-        .submit-button:hover {
+        .submit-button:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
         }
@@ -208,6 +266,9 @@
             margin-bottom: clamp(20px, 4vw, 25px);
             font-weight: 500;
             font-size: var(--text-sm);
+            display: flex;
+            align-items: center;
+            gap: clamp(8px, 2vw, 10px);
         }
 
         .alert.error {
@@ -256,18 +317,53 @@
         }
 
         .password-requirements li {
-            color: var(--text-gray);
             font-size: var(--text-xs);
             display: flex;
             align-items: center;
             gap: clamp(6px, 1.5vw, 8px);
             margin-bottom: clamp(4px, 1vw, 6px);
+            transition: all 0.3s ease;
         }
 
-        .password-requirements li::before {
-            content: '•';
-            color: var(--primary-purple);
-            font-weight: bold;
+        .password-requirements li .status {
+            font-size: clamp(14px, 3vw, 16px);
+            min-width: 16px;
+        }
+
+        .password-requirements li.valid {
+            color: var(--success-green);
+        }
+
+        .password-requirements li.invalid {
+            color: var(--text-gray);
+        }
+
+        .password-strength {
+            margin-top: clamp(8px, 2vw, 10px);
+            padding: clamp(8px, 2vw, 10px);
+            border-radius: var(--border-radius-sm);
+            font-size: var(--text-xs);
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .password-strength.weak {
+            background: #fef2f2;
+            color: var(--error-red);
+            border: 1px solid #fecaca;
+        }
+
+        .password-strength.medium {
+            background: #fffbeb;
+            color: var(--warning-orange);
+            border: 1px solid #fed7aa;
+        }
+
+        .password-strength.strong {
+            background: #f0fdf4;
+            color: var(--success-green);
+            border: 1px solid #bbf7d0;
         }
 
         /* Mobile adjustments */
@@ -287,54 +383,89 @@
                 <h1 class="main-title">🚀 Join Anonymous Messages</h1>
                 <p class="subtitle">Create your account to receive and manage anonymous messages</p>
                 
-                <div id="errorAlert" class="alert error" style="display: none;"></div>
+                <div id="errorAlert" class="alert error" style="display: none;">
+                    <span>⚠️</span>
+                    <span id="errorMessage"></span>
+                </div>
                 
-                <div class="auth-form" id="signupForm">
+                <form class="auth-form" id="signupForm" novalidate>
                     <div class="form-group">
                         <label for="name">Full Name</label>
-                        <input 
-                            type="text" 
-                            id="name" 
-                            placeholder="Enter your full name"
-                            maxlength="50"
-                            required
-                            autocomplete="name"
-                        >
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="name" 
+                                placeholder="Enter your full name"
+                                maxlength="50"
+                                required
+                                autocomplete="name"
+                            >
+                        </div>
+                        <div id="nameError" class="field-error" style="display: none;"></div>
                     </div>
                     
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            placeholder="Enter your email"
-                            required
-                            autocomplete="email"
-                        >
+                        <div class="input-wrapper">
+                            <input 
+                                type="email" 
+                                id="email" 
+                                placeholder="Enter your email"
+                                required
+                                autocomplete="email"
+                            >
+                        </div>
+                        <div id="emailError" class="field-error" style="display: none;"></div>
                     </div>
                     
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            placeholder="Create a strong password"
-                            required
-                            autocomplete="new-password"
-                        >
+                        <div class="input-wrapper">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                class="has-toggle"
+                                placeholder="Create a strong password"
+                                required
+                                autocomplete="new-password"
+                            >
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+                                👁️
+                            </button>
+                        </div>
+                        <div id="passwordError" class="field-error" style="display: none;"></div>
+                        
                         <div class="password-requirements">
                             <h4>Password Requirements:</h4>
-                            <ul>
-                                <li>At least 6 characters long</li>
-                                <li>Mix of letters and numbers recommended</li>
+                            <ul id="passwordChecks">
+                                <li id="lengthCheck" class="invalid">
+                                    <span class="status">○</span>
+                                    <span>At least 6 characters long</span>
+                                </li>
+                                <li id="letterCheck" class="invalid">
+                                    <span class="status">○</span>
+                                    <span>Contains letters</span>
+                                </li>
+                                <li id="numberCheck" class="invalid">
+                                    <span class="status">○</span>
+                                    <span>Contains numbers</span>
+                                </li>
+                                <li id="specialCheck" class="invalid">
+                                    <span class="status">○</span>
+                                    <span>Contains special character (optional)</span>
+                                </li>
                             </ul>
+                        </div>
+                        
+                        <div id="passwordStrength" class="password-strength" style="display: none;">
+                            <span id="strengthText"></span>
                         </div>
                     </div>
                     
                     <button type="submit" class="submit-button" id="signupBtn">
                         Create My Account
                     </button>
-                </div>
+                </form>
                 
                 <div class="auth-links">
                     <a href="/login" class="auth-link">Already have an account? Sign in</a>
@@ -344,13 +475,221 @@
     </div>
 
     <script>
+        // DOM Elements
         const signupForm = document.getElementById('signupForm');
         const nameInput = document.getElementById('name');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
         const signupBtn = document.getElementById('signupBtn');
         const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+        const nameError = document.getElementById('nameError');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+        const passwordStrength = document.getElementById('passwordStrength');
+        const strengthText = document.getElementById('strengthText');
 
+        // Password requirement elements
+        const lengthCheck = document.getElementById('lengthCheck');
+        const letterCheck = document.getElementById('letterCheck');
+        const numberCheck = document.getElementById('numberCheck');
+        const specialCheck = document.getElementById('specialCheck');
+
+        // Password visibility toggle
+        let isPasswordVisible = false;
+        
+        passwordToggle.addEventListener('click', function() {
+            isPasswordVisible = !isPasswordVisible;
+            
+            if (isPasswordVisible) {
+                passwordInput.type = 'text';
+                passwordToggle.textContent = '🙈';
+                passwordToggle.setAttribute('aria-label', 'Hide password');
+            } else {
+                passwordInput.type = 'password';
+                passwordToggle.textContent = '👁️';
+                passwordToggle.setAttribute('aria-label', 'Show password');
+            }
+        });
+
+        // Validation functions
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function validateName(name) {
+            return name.trim().length >= 2 && name.trim().length <= 50;
+        }
+
+        function validatePassword(password) {
+            return {
+                length: password.length >= 6,
+                hasLetter: /[a-zA-Z]/.test(password),
+                hasNumber: /\d/.test(password),
+                hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+        }
+
+        function calculatePasswordStrength(password) {
+            const checks = validatePassword(password);
+            let score = 0;
+            
+            if (checks.length) score++;
+            if (checks.hasLetter) score++;
+            if (checks.hasNumber) score++;
+            if (checks.hasSpecial) score++;
+            if (password.length >= 8) score++;
+            
+            if (score <= 2) return 'weak';
+            if (score <= 4) return 'medium';
+            return 'strong';
+        }
+
+        // Real-time validation
+        nameInput.addEventListener('blur', function() {
+            const name = this.value.trim();
+            
+            if (!name) {
+                showFieldError('name', 'Name is required');
+                return;
+            }
+            
+            if (!validateName(name)) {
+                showFieldError('name', 'Name must be between 2 and 50 characters');
+                return;
+            }
+            
+            clearFieldError('name');
+        });
+
+        nameInput.addEventListener('input', function() {
+            if (this.classList.contains('error')) {
+                const name = this.value.trim();
+                if (name && validateName(name)) {
+                    clearFieldError('name');
+                }
+            }
+        });
+
+        emailInput.addEventListener('blur', function() {
+            const email = this.value.trim();
+            
+            if (!email) {
+                showFieldError('email', 'Email is required');
+                return;
+            }
+            
+            if (!validateEmail(email)) {
+                showFieldError('email', 'Please enter a valid email address');
+                return;
+            }
+            
+            clearFieldError('email');
+        });
+
+        emailInput.addEventListener('input', function() {
+            if (this.classList.contains('error')) {
+                const email = this.value.trim();
+                if (email && validateEmail(email)) {
+                    clearFieldError('email');
+                }
+            }
+        });
+
+        // Password validation with real-time feedback
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            const checks = validatePassword(password);
+            
+            // Update requirement checks
+            updateRequirementCheck(lengthCheck, checks.length);
+            updateRequirementCheck(letterCheck, checks.hasLetter);
+            updateRequirementCheck(numberCheck, checks.hasNumber);
+            updateRequirementCheck(specialCheck, checks.hasSpecial);
+            
+            // Update strength indicator
+            if (password.length > 0) {
+                const strength = calculatePasswordStrength(password);
+                showPasswordStrength(strength);
+                
+                // Update input styling based on strength
+                passwordInput.classList.remove('error', 'warning', 'success');
+                if (strength === 'weak') {
+                    passwordInput.classList.add('error');
+                } else if (strength === 'medium') {
+                    passwordInput.classList.add('warning');
+                } else {
+                    passwordInput.classList.add('success');
+                }
+            } else {
+                hidePasswordStrength();
+                passwordInput.classList.remove('error', 'warning', 'success');
+            }
+            
+            // Clear any existing error
+            if (this.classList.contains('error') && password.length >= 6) {
+                clearFieldError('password');
+            }
+        });
+
+        passwordInput.addEventListener('blur', function() {
+            const password = this.value;
+            
+            if (!password) {
+                showFieldError('password', 'Password is required');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showFieldError('password', 'Password must be at least 6 characters long');
+                return;
+            }
+            
+            const checks = validatePassword(password);
+            if (!checks.hasLetter || !checks.hasNumber) {
+                showFieldError('password', 'Password should contain both letters and numbers');
+                return;
+            }
+            
+            clearFieldError('password');
+        });
+
+        function updateRequirementCheck(element, isValid) {
+            const statusIcon = element.querySelector('.status');
+            
+            if (isValid) {
+                element.className = 'valid';
+                statusIcon.textContent = '✓';
+            } else {
+                element.className = 'invalid';
+                statusIcon.textContent = '○';
+            }
+        }
+
+        function showPasswordStrength(strength) {
+            passwordStrength.style.display = 'block';
+            passwordStrength.className = `password-strength ${strength}`;
+            
+            switch (strength) {
+                case 'weak':
+                    strengthText.textContent = '🔓 Weak Password';
+                    break;
+                case 'medium':
+                    strengthText.textContent = '🔒 Good Password';
+                    break;
+                case 'strong':
+                    strengthText.textContent = '🔐 Strong Password';
+                    break;
+            }
+        }
+
+        function hidePasswordStrength() {
+            passwordStrength.style.display = 'none';
+        }
+
+        // Form submission
         signupForm.addEventListener('submit', handleSignup);
 
         // Handle enter key in form
@@ -370,20 +709,49 @@
             const email = emailInput.value.trim();
             const password = passwordInput.value;
             
-            if (!name || !email || !password) {
-                showError('Please fill in all fields');
-                return;
+            // Clear previous errors
+            hideError();
+            clearAllFieldErrors();
+            
+            // Validate form
+            let hasErrors = false;
+            
+            if (!name) {
+                showFieldError('name', 'Name is required');
+                hasErrors = true;
+            } else if (!validateName(name)) {
+                showFieldError('name', 'Name must be between 2 and 50 characters');
+                hasErrors = true;
             }
-
-            if (password.length < 6) {
-                showError('Password must be at least 6 characters long');
+            
+            if (!email) {
+                showFieldError('email', 'Email is required');
+                hasErrors = true;
+            } else if (!validateEmail(email)) {
+                showFieldError('email', 'Please enter a valid email address');
+                hasErrors = true;
+            }
+            
+            if (!password) {
+                showFieldError('password', 'Password is required');
+                hasErrors = true;
+            } else if (password.length < 6) {
+                showFieldError('password', 'Password must be at least 6 characters long');
+                hasErrors = true;
+            } else {
+                const checks = validatePassword(password);
+                if (!checks.hasLetter || !checks.hasNumber) {
+                    showFieldError('password', 'Password should contain both letters and numbers');
+                    hasErrors = true;
+                }
+            }
+            
+            if (hasErrors) {
                 return;
             }
             
             // Show loading state
-            signupBtn.disabled = true;
-            signupBtn.textContent = 'Creating Account...';
-            hideError();
+            setLoadingState(true);
             
             try {
                 const response = await fetch('/signup', {
@@ -397,23 +765,100 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Redirect to dashboard
-                    window.location.href = result.redirect;
+                    // Show success state
+                    signupBtn.textContent = 'Account Created! Redirecting...';
+                    signupBtn.style.background = 'linear-gradient(135deg, var(--success-green), #059669)';
+                    
+                    // Redirect after brief delay
+                    setTimeout(() => {
+                        window.location.href = result.redirect || '/dashboard';
+                    }, 1500);
                 } else {
-                    showError(result.error);
+                    showError(result.error || 'Failed to create account. Please try again.');
                 }
             } catch (error) {
-                showError('Something went wrong. Please try again.');
+                console.error('Signup error:', error);
+                showError('Something went wrong. Please check your connection and try again.');
             } finally {
-                // Reset button
-                signupBtn.disabled = false;
-                signupBtn.textContent = 'Create My Account';
+                // Reset button state after delay if still on page
+                setTimeout(() => {
+                    setLoadingState(false);
+                }, 2000);
             }
         }
 
+        function setLoadingState(loading) {
+            signupBtn.disabled = loading;
+            if (loading) {
+                signupBtn.textContent = 'Creating Account...';
+            } else {
+                signupBtn.textContent = 'Create My Account';
+                signupBtn.style.background = 'linear-gradient(135deg, var(--primary-purple), var(--primary-pink))';
+            }
+        }
+
+        function showFieldError(field, message) {
+            let input, errorDiv;
+            
+            switch (field) {
+                case 'name':
+                    input = nameInput;
+                    errorDiv = nameError;
+                    break;
+                case 'email':
+                    input = emailInput;
+                    errorDiv = emailError;
+                    break;
+                case 'password':
+                    input = passwordInput;
+                    errorDiv = passwordError;
+                    break;
+            }
+            
+            input.classList.remove('success', 'warning');
+            input.classList.add('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'flex';
+        }
+
+        function clearFieldError(field) {
+            let input, errorDiv;
+            
+            switch (field) {
+                case 'name':
+                    input = nameInput;
+                    errorDiv = nameError;
+                    break;
+                case 'email':
+                    input = emailInput;
+                    errorDiv = emailError;
+                    break;
+                case 'password':
+                    input = passwordInput;
+                    errorDiv = passwordError;
+                    break;
+            }
+            
+            input.classList.remove('error');
+            input.classList.add('success');
+            errorDiv.style.display = 'none';
+        }
+
+        function clearAllFieldErrors() {
+            ['name', 'email', 'password'].forEach(field => {
+                clearFieldError(field);
+            });
+            nameInput.classList.remove('success', 'error', 'warning');
+            emailInput.classList.remove('success', 'error', 'warning');
+            passwordInput.classList.remove('success', 'error', 'warning');
+        }
+
         function showError(message) {
-            errorAlert.textContent = message;
-            errorAlert.style.display = 'block';
+            errorMessage.textContent = message;
+            errorAlert.style.display = 'flex';
+            
+            // Scroll to top to show error
+            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function hideError() {
