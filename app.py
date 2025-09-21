@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse
-from pywebpush import WebPush
+from pywebpush import webpush
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -418,7 +418,7 @@ def send_push_notification(user_id, message, title="New Whispr Message"):
         
         for subscription in user_subscriptions:
             try:
-                WebPush(
+                webpush(
                     subscription_info={
                         'endpoint': subscription['endpoint'],
                         'keys': subscription['keys']
