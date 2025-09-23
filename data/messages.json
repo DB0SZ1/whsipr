@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "user_id": "cc3c68025f0d",
+    "message": "hey",
+    "timestamp": "2025-09-23T21:25:42.676983",
+    "read": true,
+    "ip_hash": "12ca17b4"
+  },
+  {
+    "id": 2,
+    "user_id": "cc3c68025f0d",
+    "message": "hey",
+    "timestamp": "2025-09-23T21:27:07.329628",
+    "read": true,
+    "ip_hash": "12ca17b4"
+  }
+]

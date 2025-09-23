@@ -5,5 +5,12 @@
     "email": "db0sz.co@gmail.com",
     "password": "59d517f80c723855402848a07ed64c5b175098f54086539eb421ad3710ee5c91ea726d702029e736fdddd9029691b9767c077e6dd150f21ec604872cd7399049",
     "created_at": "2025-09-21T11:59:10.236681"
+  },
+  {
+    "user_id": "cc3c68025f0d",
+    "name": "Idris Ahmad Rabiu",
+    "email": "dbsc2008@gmail.com",
+    "password": "73e7af06a771f71d7d91faa5f082472b0b527535a1685549b5843e5d8d41c878ab3fc1dd7f1eed04a03af94a6a2331650c8d57a7d55d1084784a086908e8dc68",
+    "created_at": "2025-09-22T10:39:46.952025"
   }
 ]

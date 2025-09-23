@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ user.name }}'s Messages Dashboard</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whispr - {{ user.name }}'s Messages</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <script src="/static/script.js" defer></script>
     <script>
         const VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
         const USER_ID = "{{ user.user_id }}";
@@ -106,6 +102,17 @@
             }
         }
 
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         body {
             font-family: 'Poppins', sans-serif;
             background: var(--bg-light);
@@ -164,6 +171,7 @@
             border: 1px solid var(--border-medium);
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         .header-btn::before {
@@ -207,6 +215,11 @@
         .header-btn.notifications:hover {
             background: linear-gradient(135deg, #059669, #047857);
             box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .header-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
         .stats {
@@ -655,7 +668,7 @@
             animation: pulse 0.5s ease-in-out;
         }
 
-        /* New notification styles */
+        /* Notification styles */
         .notification {
             position: fixed;
             top: 20px;
@@ -667,17 +680,6 @@
             box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
             z-index: 1001;
             animation: slideInRight 0.5s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
         }
 
         /* Mobile adjustments */
@@ -804,3 +806,418 @@
                         <button class="copy-button" onclick="copyLink()">Copy Link</button>
                     </div>
                 </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Message Preview Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Message Preview</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="message-info" id="modalInfo">
+                    <div class="info-row">
+                        <span class="info-label">Message ID:</span>
+                        <span class="info-value" id="modalMessageId">#000</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Received:</span>
+                        <span class="info-value" id="modalTimestamp">Loading...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="modalStatus">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="message-full" id="modalMessage">
+                    Loading message...
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-mark-read" id="modalMarkReadBtn" style="display: none;">
+                        ✓ Mark as Read
+                    </button>
+                    <button class="btn btn-delete" id="modalDeleteBtn">
+                        🗑️ Delete Message
+                    </button>
+                    <button class="btn btn-preview" onclick="closeModal()">
+                        ✖️ Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Message data for modal functionality
+        const messages = {{ messages|tojson|safe }};
+        const userId = '{{ user.user_id }}';
+        
+        // Auto-refresh disabled - remove this entire block or comment it out
+// let refreshInterval = setInterval(() => {
+//     const modal = document.getElementById('messageModal');
+//     if (modal.style.display !== 'block') {
+//         window.location.reload();
+//     }
+// }, 30000);
+        // Add a visual indicator for new messages
+        document.addEventListener('DOMContentLoaded', function() {
+            const unreadCount = {{ messages|selectattr('read', 'equalto', False)|list|length }};
+            if (unreadCount > 0) {
+                document.title = `(${unreadCount}) {{ user.name }}'s Messages Dashboard`;
+            }
+            
+            // Initialize push notifications if supported
+            initializePushNotifications();
+        });
+
+        // Push notification functionality
+        async function initializePushNotifications() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                console.log('Push messaging is not supported');
+                const notificationBtn = document.getElementById('enable-notifications');
+                if (notificationBtn) {
+                    notificationBtn.style.display = 'none';
+                }
+                return;
+            }
+
+            const notificationBtn = document.getElementById('enable-notifications');
+            if (!notificationBtn) return;
+            
+            // Check if notifications are already granted
+            if (Notification.permission === 'granted') {
+                notificationBtn.textContent = '🔔 Notifications Enabled';
+                notificationBtn.disabled = true;
+            }
+            
+            notificationBtn.addEventListener('click', async () => {
+                try {
+                    // First request notification permission
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        showNotification('Notifications blocked', 'Please enable notifications in your browser settings.');
+                        return;
+                    }
+
+                    // Register service worker
+                    const registration = await navigator.serviceWorker.register('/static/service-worker.js');
+                    await navigator.serviceWorker.ready;
+
+                    // Subscribe to push notifications
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    });
+
+                    // Send subscription to server
+                    const response = await fetch(`/subscribe/${userId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ subscription })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        notificationBtn.textContent = '🔔 Notifications Enabled';
+                        notificationBtn.disabled = true;
+                        showNotification('Success!', 'Push notifications enabled successfully.');
+                    } else {
+                        throw new Error(data.error || 'Failed to enable notifications');
+                    }
+
+                } catch (error) {
+                    console.error('Error enabling notifications:', error);
+                    showNotification('Error', 'Failed to enable notifications. Please try again.');
+                }
+            });
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            if (!base64String) {
+                console.error('VAPID key is missing');
+                return new Uint8Array();
+            }
+            
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/-/g, '+')
+                .replace(/_/g, '/');
+            
+            try {
+                const rawData = window.atob(base64);
+                const outputArray = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) {
+                    outputArray[i] = rawData.charCodeAt(i);
+                }
+                return outputArray;
+            } catch (error) {
+                console.error('Error converting VAPID key:', error);
+                return new Uint8Array();
+            }
+        }
+
+        function showNotification(title, body) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 5px;">${title}</div>
+                <div style="font-size: 14px; opacity: 0.9;">${body}</div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 4000);
+        }
+
+        function copyLink() {
+            const input = document.getElementById('messageLink');
+            const button = event.target;
+            
+            input.select();
+            input.setSelectionRange(0, 99999); // For mobile
+            
+            try {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    showCopySuccess(button);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    document.execCommand('copy');
+                    showCopySuccess(button);
+                });
+            } catch (err) {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                showCopySuccess(button);
+            }
+        }
+
+        function showCopySuccess(button) {
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+        }
+
+        function openMessageModal(messageId) {
+            const message = messages.find(m => m.id === messageId);
+            if (!message) return;
+
+            const modal = document.getElementById('messageModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalMessageId = document.getElementById('modalMessageId');
+            const modalTimestamp = document.getElementById('modalTimestamp');
+            const modalStatus = document.getElementById('modalStatus');
+            const modalMarkReadBtn = document.getElementById('modalMarkReadBtn');
+            const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+
+            // Set modal content
+            modalTitle.textContent = `Message #${message.id}`;
+            modalMessageId.textContent = `#${message.id}`;
+            
+            // Format timestamp properly
+            const timestamp = message.timestamp;
+            if (timestamp.includes('T')) {
+                const [date, time] = timestamp.split('T');
+                const timeOnly = time.split('.')[0];
+                modalTimestamp.textContent = `${date} at ${timeOnly}`;
+            } else {
+                modalTimestamp.textContent = timestamp;
+            }
+            
+            modalStatus.textContent = message.read ? '✓ Read' : '● Unread';
+            modalStatus.style.color = message.read ? '#166534' : '#dc2626';
+            
+            // Set message content
+            modalMessage.textContent = message.message;
+            
+            // Show/hide mark as read button
+            if (message.read) {
+                modalMarkReadBtn.style.display = 'none';
+            } else {
+                modalMarkReadBtn.style.display = 'inline-block';
+                modalMarkReadBtn.onclick = () => markAsRead(message.id);
+            }
+            
+            // Set delete button action
+            modalDeleteBtn.onclick = () => deleteMessage(message.id);
+            
+            // Show modal
+            modal.style.display = 'block';
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Auto-mark as read if unread (after 3 seconds)
+            if (!message.read) {
+                setTimeout(() => {
+                    if (modal.style.display === 'block') {
+                        markAsRead(message.id, false); // false = don't redirect
+                    }
+                }, 3000);
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('messageModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function markAsRead(messageId, redirect = true) {
+            if (redirect) {
+                window.location.href = `/mark_read/${userId}/${messageId}`;
+            } else {
+                // Silent mark as read via fetch
+                fetch(`/mark_read/${userId}/${messageId}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Failed to mark as read');
+                        return response;
+                    })
+                    .then(() => {
+                        // Update UI without page reload
+                        const message = messages.find(m => m.id === messageId);
+                        if (message) {
+                            message.read = true;
+                            
+                            // Update modal
+                            const modalMarkReadBtn = document.getElementById('modalMarkReadBtn');
+                            const modalStatus = document.getElementById('modalStatus');
+                            if (modalMarkReadBtn) modalMarkReadBtn.style.display = 'none';
+                            if (modalStatus) {
+                                modalStatus.textContent = '✓ Read';
+                                modalStatus.style.color = '#166534';
+                            }
+                            
+                            // Update the card on the page
+                            updateMessageCard(messageId);
+                            
+                            // Update stats
+                            updateStats();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error marking as read:', error);
+                        showNotification('Error', 'Failed to mark message as read.');
+                    });
+            }
+        }
+
+        function updateMessageCard(messageId) {
+            const messageCards = document.querySelectorAll('.message-card');
+            messageCards.forEach(card => {
+                if (card.getAttribute('onclick') && card.getAttribute('onclick').includes(messageId)) {
+                    card.classList.remove('unread');
+                    const badge = card.querySelector('.badge');
+                    if (badge) {
+                        badge.className = 'badge read';
+                        badge.textContent = '✓ Read';
+                    }
+                    const markReadBtn = card.querySelector('.btn-mark-read');
+                    if (markReadBtn && markReadBtn.parentNode) {
+                        markReadBtn.remove();
+                    }
+                }
+            });
+        }
+
+        function updateStats() {
+            const unreadMessages = messages.filter(m => !m.read);
+            const readMessages = messages.filter(m => m.read);
+            
+            const statCards = document.querySelectorAll('.stat-card');
+            if (statCards.length >= 3) {
+                statCards[1].querySelector('.stat-number').textContent = unreadMessages.length;
+                statCards[2].querySelector('.stat-number').textContent = readMessages.length;
+            }
+            
+            // Update page title
+            if (unreadMessages.length > 0) {
+                document.title = `(${unreadMessages.length}) {{ user.name }}'s Messages Dashboard`;
+            } else {
+                document.title = `{{ user.name }}'s Messages Dashboard`;
+            }
+        }
+
+        function deleteMessage(messageId) {
+            if (confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+                window.location.href = `/delete/${userId}/${messageId}`;
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('messageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('messageModal');
+                if (modal.style.display === 'block') {
+                    closeModal();
+                }
+            }
+        });
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + C to copy link when not in input field
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && e.target.tagName !== 'INPUT') {
+                const linkInput = document.getElementById('messageLink');
+                if (linkInput) {
+                    copyLink();
+                    e.preventDefault();
+                }
+            }
+            
+            // R key to refresh
+            if (e.key === 'r' && !e.ctrlKey && !e.metaKey && e.target.tagName !== 'INPUT') {
+                window.location.reload();
+                e.preventDefault();
+            }
+        });
+
+       // Page visibility API for auto-refresh - disabled
+// document.addEventListener('visibilitychange', function() {
+//     if (document.hidden) {
+//         if (refreshInterval) {
+//             clearInterval(refreshInterval);
+//             refreshInterval = null;
+//         }
+//     } else {
+//         if (!refreshInterval) {
+//             refreshInterval = setInterval(() => {
+//                 const modal = document.getElementById('messageModal');
+//                 if (modal.style.display !== 'block') {
+//                     window.location.reload();
+//                 }
+//             }, 30000);
+//         }
+//     }
+// });.
+
+        // Add smooth scroll behavior for better UX
+        if (document.documentElement) {
+            document.documentElement.style.scrollBehavior = 'smooth';
+        }
+    </script>
+    <script src = "/static/script.js"></script>
+</body>
+</html>
